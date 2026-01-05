@@ -1,0 +1,10 @@
+export { ProfileTab } from './ProfileTab';
+export { IdDetailsSection } from './IdDetailsSection';
+export { AcademicAchievementsSection } from './AcademicAchievementsSection';
+export { StrengthsLanguagesSection } from './StrengthsLanguagesSection';
+export { ExperienceSection } from './ExperienceSection';
+export { DurableSkillsSection } from './DurableSkillsSection';
+export { PersonalityTypeSection } from './PersonalityTypeSection';
+export { ValuesSection } from './ValuesSection';
+export { MissionSection } from './MissionSection';
+export { CareerVisionSection } from './CareerVisionSection';
