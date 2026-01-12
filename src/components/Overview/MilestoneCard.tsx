@@ -73,6 +73,9 @@ export function MilestoneCard({ milestone, onClick }: MilestoneCardProps) {
         display: 'flex',
         flexDirection: 'column',
         gap: 1,
+        minWidth: 260,
+        flexShrink: 0,
+        scrollSnapAlign: 'start',
         '&:hover': {
           borderColor: '#D5D7DA',
           boxShadow: '0 1px 3px rgba(0,0,0,0.08)',

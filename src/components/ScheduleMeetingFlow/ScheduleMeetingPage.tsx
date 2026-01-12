@@ -7,9 +7,7 @@ import { ArrowLeft, Calendar, Sparkles } from 'lucide-react';
 import { AppLayout } from '@/components/AppLayout';
 import { AlmaChatPanel } from '@/components/AlmaChatPanel';
 import { StepDuration } from './StepDuration';
-import { StepTopics } from './StepTopics';
-import { StepAgenda } from './StepAgenda';
-import { StepConfirm } from './StepConfirm';
+import { StepTopicsAgenda } from './StepTopicsAgenda';
 import { generateTopicRecommendationsAsync, generateTopicRecommendations } from './topicRecommendations';
 import { useStudentData } from '@/hooks/useStudentData';
 import { useMeetingsContext } from '@/contexts/MeetingsContext';
@@ -26,22 +24,18 @@ export interface ScheduledMeetingData {
   agenda: AgendaItem[];
 }
 
-type Step = 'duration' | 'topics' | 'agenda' | 'confirm';
+type Step = 'duration' | 'topics-agenda';
 
-const STEPS: Step[] = ['duration', 'topics', 'agenda', 'confirm'];
+const STEPS: Step[] = ['duration', 'topics-agenda'];
 
 const STEP_TITLES: Record<Step, string> = {
   duration: 'Date & Duration',
-  topics: 'Select Topics',
-  agenda: 'Review Agenda',
-  confirm: 'Confirm',
+  'topics-agenda': 'Topics & Agenda',
 };
 
 const STEP_DESCRIPTIONS: Record<Step, string> = {
   duration: 'Choose when and how long the meeting will be',
-  topics: 'Select topics to discuss based on AI recommendations',
-  agenda: 'Review and customize the meeting agenda',
-  confirm: 'Review all details and schedule the meeting',
+  'topics-agenda': 'Select topics and review your meeting agenda',
 };
 
 export function ScheduleMeetingPage({ studentId }: ScheduleMeetingPageProps) {
@@ -92,12 +86,30 @@ export function ScheduleMeetingPage({ studentId }: ScheduleMeetingPageProps) {
     }
   }, [studentData, recommendationsLoaded]);
 
-  // Trigger recommendation loading when moving to topics step
+  // Trigger recommendation loading when moving to topics-agenda step
   useEffect(() => {
-    if (currentStep === 'topics' && !recommendationsLoaded && studentData) {
+    if (currentStep === 'topics-agenda' && !recommendationsLoaded && studentData) {
       loadRecommendations();
     }
   }, [currentStep, recommendationsLoaded, studentData, loadRecommendations]);
+
+  // Regenerate agenda when topics change on the combined step
+  useEffect(() => {
+    if (currentStep === 'topics-agenda' && recommendationsLoaded) {
+      const generatedAgenda = generateAgendaFromTopics(
+        recommendations,
+        selectedTopicIds,
+        customTopics,
+        duration
+      );
+      setAgenda(generatedAgenda);
+
+      // Generate default title from first topic if not set
+      if (!meetingTitle && generatedAgenda.length > 0) {
+        setMeetingTitle(generatedAgenda[0].topic);
+      }
+    }
+  }, [currentStep, recommendationsLoaded, selectedTopicIds, customTopics, duration, recommendations]);
 
   if (!studentData) {
     return (
@@ -120,8 +132,8 @@ export function ScheduleMeetingPage({ studentId }: ScheduleMeetingPageProps) {
   const handleNext = () => {
     const nextIndex = currentStepIndex + 1;
     if (nextIndex < STEPS.length) {
-      // If moving from topics to agenda, generate the agenda
-      if (currentStep === 'topics') {
+      // When moving to topics-agenda step, generate initial agenda
+      if (currentStep === 'duration') {
         const generatedAgenda = generateAgendaFromTopics(
           recommendations,
           selectedTopicIds,
@@ -188,12 +200,10 @@ export function ScheduleMeetingPage({ studentId }: ScheduleMeetingPageProps) {
     switch (currentStep) {
       case 'duration':
         return duration > 0 && !!scheduledDate && !!scheduledTime;
-      case 'topics':
-        return selectedTopicIds.size > 0 || customTopics.length > 0;
-      case 'agenda':
-        return agenda.length > 0 && meetingTitle.trim().length > 0;
-      case 'confirm':
-        return true;
+      case 'topics-agenda':
+        return (selectedTopicIds.size > 0 || customTopics.length > 0) &&
+               agenda.length > 0 &&
+               meetingTitle.trim().length > 0;
       default:
         return false;
     }
@@ -313,7 +323,7 @@ export function ScheduleMeetingPage({ studentId }: ScheduleMeetingPageProps) {
               />
             )}
 
-            {currentStep === 'topics' && (
+            {currentStep === 'topics-agenda' && (
               isLoadingRecommendations ? (
                 <Box className="p-8 flex flex-col items-center justify-center min-h-[400px]">
                   <Box className="relative mb-4">
@@ -326,50 +336,29 @@ export function ScheduleMeetingPage({ studentId }: ScheduleMeetingPageProps) {
                     Analyzing Student Data
                   </Typography>
                   <Typography className="text-sm text-neutral-500 text-center max-w-md">
-                    Our AI is reviewing {student.firstName}'s milestones, goals, and grade-level
+                    Our AI is reviewing {student.firstName}&apos;s milestones, goals, and grade-level
                     requirements to recommend personalized discussion topics...
                   </Typography>
                 </Box>
               ) : (
-                <StepTopics
+                <StepTopicsAgenda
                   studentFirstName={student.firstName}
                   recommendations={recommendations}
                   selectedTopicIds={selectedTopicIds}
                   customTopics={customTopics}
+                  agenda={agenda}
+                  meetingTitle={meetingTitle}
+                  duration={duration}
                   onTopicToggle={handleTopicToggle}
                   onAddCustomTopic={handleAddCustomTopic}
                   onRemoveCustomTopic={handleRemoveCustomTopic}
-                  onNext={handleNext}
+                  onAgendaChange={setAgenda}
+                  onTitleChange={setMeetingTitle}
+                  onSchedule={handleSchedule}
                   onBack={handlePrevStep}
                   canProceed={canProceed()}
                 />
               )
-            )}
-
-            {currentStep === 'agenda' && (
-              <StepAgenda
-                agenda={agenda}
-                meetingTitle={meetingTitle}
-                duration={duration}
-                onAgendaChange={setAgenda}
-                onTitleChange={setMeetingTitle}
-                onNext={handleNext}
-                onBack={handlePrevStep}
-                canProceed={canProceed()}
-              />
-            )}
-
-            {currentStep === 'confirm' && (
-              <StepConfirm
-                meetingTitle={meetingTitle}
-                scheduledDate={scheduledDate}
-                scheduledTime={scheduledTime}
-                duration={duration}
-                agenda={agenda}
-                counselorName="Mr. Rodriguez"
-                onConfirm={handleSchedule}
-                onBack={handlePrevStep}
-              />
             )}
           </Paper>
         </Box>

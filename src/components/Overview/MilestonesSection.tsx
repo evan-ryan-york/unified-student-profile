@@ -35,7 +35,7 @@ export function MilestonesSection({ milestones, onMilestoneClick }: MilestonesSe
   }
 
   return (
-    <Box>
+    <Box sx={{ minWidth: 0 }}>
       {/* Header with title and progress */}
       <Box
         sx={{
@@ -81,15 +81,28 @@ export function MilestonesSection({ milestones, onMilestoneClick }: MilestonesSe
         </Box>
       </Box>
 
-      {/* Milestone grid */}
+      {/* Milestone horizontal scroll */}
       <Box
         sx={{
-          display: 'grid',
-          gridTemplateColumns: {
-            xs: 'repeat(2, 1fr)',
-            lg: 'repeat(3, 1fr)',
-          },
+          display: 'flex',
+          overflowX: 'auto',
           gap: 2,
+          pb: 1.5,
+          scrollSnapType: 'x mandatory',
+          '&::-webkit-scrollbar': {
+            height: 6,
+          },
+          '&::-webkit-scrollbar-track': {
+            backgroundColor: '#F3F4F6',
+            borderRadius: 3,
+          },
+          '&::-webkit-scrollbar-thumb': {
+            backgroundColor: '#D1D5DB',
+            borderRadius: 3,
+            '&:hover': {
+              backgroundColor: '#9CA3AF',
+            },
+          },
         }}
       >
         {milestones.map((milestone) => (

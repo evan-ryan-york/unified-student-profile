@@ -427,7 +427,7 @@ export function AlmaChatPanel({ studentFirstName, tasks, suggestedActions, onTas
                 lineHeight: 1.5,
               }}
             >
-              Hi {studentFirstName}! How can I help you today?
+              Hey Sarah, how can I help you support {studentFirstName} today?
             </Typography>
           </Box>
 

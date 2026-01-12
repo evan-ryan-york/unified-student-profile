@@ -123,19 +123,11 @@ export function AcademicAchievementsSection({
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: {
-            xs: 'repeat(2, 1fr)',
-            md: 'repeat(4, 1fr)',
-          },
+          gridTemplateColumns: 'repeat(3, 1fr)',
           gap: 2,
           mb: 3,
         }}
       >
-        <StatCard
-          label="GPA"
-          value={achievements.gpa.toFixed(2)}
-          subtitle={`of ${achievements.gpaMax} max pts`}
-        />
         <StatCard label="ACT" value={achievements.actScore} />
         <StatCard label="SAT" value={achievements.satScore} />
         <StatCard label="Class Rank" value={achievements.classRank} />

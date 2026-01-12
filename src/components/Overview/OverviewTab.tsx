@@ -36,7 +36,7 @@ export function OverviewTab({
   };
 
   return (
-    <Box sx={{ py: 2.5, display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <Box sx={{ py: 2.5, display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
       {/* Row 1: Milestones */}
       <MilestonesSection
         milestones={milestones}

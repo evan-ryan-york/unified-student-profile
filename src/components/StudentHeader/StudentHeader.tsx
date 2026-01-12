@@ -1,7 +1,7 @@
 'use client';
 
 import { Box, Typography, Button, Avatar } from '@mui/material';
-import { ArrowLeft, Calendar, MapPin, Info } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { Student } from '@/types/student';
 
@@ -200,13 +200,6 @@ export function StudentHeader({ student, studentId }: StudentHeaderProps) {
           <Typography sx={{ fontSize: '14px', color: '#717680' }}>
             {student.classRank || 'Class rank'}
           </Typography>
-          <Typography sx={{ fontSize: '14px', color: '#D5D7DA' }}>·</Typography>
-
-          <Typography sx={{ fontSize: '14px', fontWeight: 600, color: '#181D27' }}>
-            {student.readinessScore}%
-          </Typography>
-          <Typography sx={{ fontSize: '14px', color: '#717680' }}>Readiness score</Typography>
-          <Info size={14} style={{ color: '#A4A7AE', cursor: 'help' }} />
         </Box>
       </Box>
     </Box>

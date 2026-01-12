@@ -28,6 +28,8 @@ export function AppLayout({ children, rightPanel, currentStudentId }: AppLayoutP
           marginLeft: '220px', // Sidebar width
           marginRight: rightPanel ? '420px' : 0, // Right panel width
           flex: 1,
+          minWidth: 0, // Allow flex shrinking
+          overflow: 'hidden', // Prevent children from pushing out
           display: 'flex',
           justifyContent: 'center',
         }}
@@ -38,6 +40,7 @@ export function AppLayout({ children, rightPanel, currentStudentId }: AppLayoutP
             width: '100%',
             maxWidth: 'calc(100% - 160px)', // 80px margin on each side
             mx: '80px',
+            minWidth: 0, // Allow content to shrink
           }}
         >
           {children}
