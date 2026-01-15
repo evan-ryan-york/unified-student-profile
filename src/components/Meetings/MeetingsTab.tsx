@@ -8,16 +8,16 @@ import { PastMeetingsSection } from './PastMeetingsSection';
 import { ActivityHistorySection } from './ActivityHistorySection';
 import { ScheduleMeetingModal } from '@/components/ScheduleMeetingFlow';
 import type { ScheduledMeetingData as ModalScheduledMeetingData } from '@/components/ScheduleMeetingFlow/ScheduleMeetingModal';
-import type { ActivityItem, Meeting, StudentData } from '@/types/student';
+import type { ActivityItem, Meeting } from '@/types/student';
 
 interface MeetingsTabProps {
   activities: ActivityItem[];
   meetings: Meeting[];
   studentId: string;
-  studentData: StudentData;
+  studentName: string;
 }
 
-export function MeetingsTab({ activities, meetings, studentId, studentData }: MeetingsTabProps) {
+export function MeetingsTab({ activities, meetings, studentId, studentName }: MeetingsTabProps) {
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showToast, setShowToast] = useState(false);
@@ -96,7 +96,8 @@ export function MeetingsTab({ activities, meetings, studentId, studentData }: Me
         open={isModalOpen}
         onClose={handleCloseModal}
         onSchedule={handleMeetingScheduled}
-        studentData={studentData}
+        studentId={studentId}
+        studentName={studentName}
       />
 
       {/* Success Toast */}

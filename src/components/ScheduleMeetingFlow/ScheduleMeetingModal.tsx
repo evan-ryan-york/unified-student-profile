@@ -10,22 +10,23 @@ import {
   TextField,
   Chip,
   IconButton,
-  InputAdornment,
+  CircularProgress,
 } from '@mui/material';
 import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
-import { X, Type, Users, ListChecks, MapPin } from 'lucide-react';
+import { X, Sparkles } from 'lucide-react';
 import { Slate } from '@/theme/primitives';
-import { InlineAgendaBuilder } from './InlineAgendaBuilder';
-import type { StudentData, AgendaItem } from '@/types/student';
+import { useStudentData } from '@/hooks/useStudentData';
+import { generateTextAgenda } from '@/lib/geminiService';
 
 interface ScheduleMeetingModalProps {
   open: boolean;
   onClose: () => void;
   onSchedule: (data: ScheduledMeetingData) => void;
-  studentData: StudentData;
+  studentId: string;
+  studentName: string;
 }
 
 export interface ScheduledMeetingData {
@@ -33,7 +34,7 @@ export interface ScheduledMeetingData {
   scheduledDate: string;
   duration: number;
   guests: string;
-  agenda: AgendaItem[];
+  agenda: string;
   location: string;
 }
 
@@ -107,18 +108,17 @@ export function ScheduleMeetingModal({
   open,
   onClose,
   onSchedule,
-  studentData,
+  studentId,
+  studentName,
 }: ScheduleMeetingModalProps) {
   const [step, setStep] = useState<Step>('datetime');
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
-  const [title, setTitle] = useState<string>('');
-  const [guests, setGuests] = useState<string>('');
-  const [agenda, setAgenda] = useState<AgendaItem[]>([]);
-  const [location, setLocation] = useState<string>('');
-  const [showAgendaBuilder, setShowAgendaBuilder] = useState(false);
+  const [agendaText, setAgendaText] = useState<string>('');
+  const [isGeneratingAgenda, setIsGeneratingAgenda] = useState<boolean>(false);
 
-  const studentName = studentData.student.firstName;
+  const studentData = useStudentData(studentId);
+
   const tomorrow = dayjs().add(1, 'day');
   const dateValue = selectedDate ? dayjs(selectedDate) : null;
 
@@ -129,27 +129,41 @@ export function ScheduleMeetingModal({
     }
   };
 
-  const handleNext = () => {
+  const handleNext = useCallback(async () => {
     setStep('details');
-  };
+    setIsGeneratingAgenda(true);
+
+    try {
+      const meetingDate = `${selectedDate}T${selectedTime}:00`;
+      if (studentData) {
+        const generatedAgenda = await generateTextAgenda(studentData, meetingDate);
+        setAgendaText(generatedAgenda);
+      } else {
+        // Fallback if student data not loaded
+        setAgendaText(`Meeting with ${studentName}\n\nPRIORITY ITEMS\n- \n\nDISCUSSION TOPICS\n- \n\nNOTES\n`);
+      }
+    } catch (error) {
+      console.error('Failed to generate agenda:', error);
+      // Set a basic fallback
+      setAgendaText(`Meeting with ${studentName}\n\nPRIORITY ITEMS\n- \n\nDISCUSSION TOPICS\n- \n\nNOTES\n`);
+    } finally {
+      setIsGeneratingAgenda(false);
+    }
+  }, [selectedDate, selectedTime, studentData, studentName]);
 
   const handleBack = () => {
     setStep('datetime');
   };
 
-  const handleAgendaChange = useCallback((newAgenda: AgendaItem[]) => {
-    setAgenda(newAgenda);
-  }, []);
-
   const handleSchedule = () => {
     const dateTime = `${selectedDate}T${selectedTime}:00Z`;
     onSchedule({
-      title: title || `Meeting with ${studentName}`,
+      title: `Meeting with ${studentName}`,
       scheduledDate: dateTime,
       duration: DEFAULT_DURATION,
-      guests,
-      agenda,
-      location,
+      guests: '',
+      agenda: agendaText,
+      location: '',
     });
     handleReset();
   };
@@ -158,11 +172,8 @@ export function ScheduleMeetingModal({
     setStep('datetime');
     setSelectedDate('');
     setSelectedTime('');
-    setTitle('');
-    setGuests('');
-    setAgenda([]);
-    setLocation('');
-    setShowAgendaBuilder(false);
+    setAgendaText('');
+    setIsGeneratingAgenda(false);
   };
 
   const handleClose = () => {
@@ -283,94 +294,68 @@ export function ScheduleMeetingModal({
         ) : (
           <Box className="p-6">
             {/* Selected date/time summary */}
-            <Box className="bg-slate-50 rounded-lg p-3 mb-6">
+            <Box className="bg-slate-50 rounded-lg p-3 mb-4">
               <Typography className="text-sm text-slate-600">
                 {formatDisplayDate(selectedDate)} at {formatDisplayTime(selectedTime)}
               </Typography>
             </Box>
 
-            {/* Form fields */}
-            <Box className="space-y-4">
-              {/* Title */}
+            {/* Loading state or text editor */}
+            {isGeneratingAgenda ? (
+              <Box className="flex flex-col items-center justify-center py-12">
+                <Box className="relative">
+                  <CircularProgress size={40} sx={{ color: Slate[300] }} />
+                  <Box className="absolute inset-0 flex items-center justify-center">
+                    <Sparkles size={18} className="text-amber-500" />
+                  </Box>
+                </Box>
+                <Typography className="text-base font-medium text-neutral-900 mt-4">
+                  Preparing your meeting agenda
+                </Typography>
+                <Typography className="text-sm text-neutral-500 text-center mt-1">
+                  Analyzing {studentName}&apos;s milestones and goals...
+                </Typography>
+              </Box>
+            ) : (
               <TextField
                 fullWidth
-                placeholder="Add title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Type size={18} className="text-neutral-400" />
-                    </InputAdornment>
-                  ),
+                multiline
+                minRows={14}
+                maxRows={20}
+                value={agendaText}
+                onChange={(e) => setAgendaText(e.target.value)}
+                placeholder="Meeting agenda will appear here..."
+                sx={{
+                  '& .MuiInputBase-root': {
+                    fontSize: '0.875rem',
+                    fontFamily: 'inherit',
+                    lineHeight: 1.7,
+                    backgroundColor: 'white',
+                  },
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: Slate[200],
+                    },
+                    '&:hover fieldset': {
+                      borderColor: Slate[300],
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: Slate[400],
+                    },
+                  },
+                  '& .MuiInputBase-input': {
+                    whiteSpace: 'pre-wrap',
+                  },
                 }}
-                sx={{ '& .MuiInputBase-root': { fontSize: '0.875rem' } }}
               />
-
-              {/* Guests */}
-              <TextField
-                fullWidth
-                placeholder="Add guests"
-                value={guests}
-                onChange={(e) => setGuests(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Users size={18} className="text-neutral-400" />
-                    </InputAdornment>
-                  ),
-                }}
-                sx={{ '& .MuiInputBase-root': { fontSize: '0.875rem' } }}
-              />
-
-              {/* Agenda */}
-              {!showAgendaBuilder ? (
-                <Button
-                  variant="outlined"
-                  fullWidth
-                  startIcon={<ListChecks size={18} />}
-                  onClick={() => setShowAgendaBuilder(true)}
-                  sx={{
-                    textTransform: 'none',
-                    justifyContent: 'flex-start',
-                    py: 1.5,
-                    color: 'text.secondary',
-                    borderColor: 'divider',
-                  }}
-                >
-                  Add meeting agenda
-                </Button>
-              ) : (
-                <InlineAgendaBuilder
-                  studentData={studentData}
-                  duration={DEFAULT_DURATION}
-                  onAgendaChange={handleAgendaChange}
-                  onCollapse={() => setShowAgendaBuilder(false)}
-                />
-              )}
-
-              {/* Location */}
-              <TextField
-                fullWidth
-                placeholder="Add location"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <MapPin size={18} className="text-neutral-400" />
-                    </InputAdornment>
-                  ),
-                }}
-                sx={{ '& .MuiInputBase-root': { fontSize: '0.875rem' } }}
-              />
-            </Box>
+            )}
 
             {/* Actions */}
-            <Box className="flex gap-3 mt-6 pt-4 border-t border-neutral-100">
+            <Box className="flex gap-3 mt-4 pt-4 border-t border-neutral-100">
               <Button
                 variant="text"
                 onClick={handleBack}
+                disabled={isGeneratingAgenda}
                 sx={{ textTransform: 'none', flex: 1 }}
               >
                 Back
@@ -378,9 +363,10 @@ export function ScheduleMeetingModal({
               <Button
                 variant="contained"
                 onClick={handleSchedule}
+                disabled={isGeneratingAgenda}
                 sx={{ textTransform: 'none', flex: 2 }}
               >
-                Schedule
+                Schedule Meeting
               </Button>
             </Box>
           </Box>

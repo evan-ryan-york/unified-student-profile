@@ -341,6 +341,285 @@ export async function generateAITopicRecommendations(
 }
 
 /**
+ * Build the prompt for Gemini to generate a text-based meeting agenda
+ */
+function buildTextAgendaPrompt(studentData: StudentData, meetingDate?: string): string {
+  const { student, milestones, smartGoals, bookmarks, aiReflections, meetings, profile } = studentData;
+
+  // Get incomplete milestones
+  const incompleteMilestones = milestones
+    .filter(m => m.status !== 'done')
+    .map(m => `- ${m.title} (${m.progress}% complete${m.dueDate ? `, due: ${m.dueDate}` : ''})`)
+    .join('\n');
+
+  // Get active goals
+  const activeGoals = smartGoals
+    .filter(g => g.status === 'active')
+    .map(g => {
+      const completedSubtasks = g.subtasks.filter(s => s.completed).length;
+      return `- ${g.title}: ${completedSubtasks}/${g.subtasks.length} subtasks complete`;
+    })
+    .join('\n');
+
+  // Get bookmarked careers/programs
+  const bookmarkedItems = bookmarks
+    .slice(0, 5)
+    .map(b => `- ${b.title} (${b.type}${b.isTopPick ? ', TOP PICK' : ''})`)
+    .join('\n');
+
+  // Get recent AI reflections
+  const recentReflections = aiReflections
+    .slice(0, 3)
+    .map(r => `- "${r.title}" from lesson "${r.lessonTitle}"`)
+    .join('\n');
+
+  // Get last meeting summary if available
+  const completedMeetings = meetings.filter(m => m.status === 'completed');
+  const lastMeeting = completedMeetings.length > 0
+    ? completedMeetings.sort((a, b) =>
+        new Date(b.scheduledDate).getTime() - new Date(a.scheduledDate).getTime()
+      )[0]
+    : null;
+
+  const lastMeetingContext = lastMeeting?.summary
+    ? `Last meeting "${lastMeeting.title}" on ${new Date(lastMeeting.scheduledDate).toLocaleDateString()}:
+- Summary: ${lastMeeting.summary.overview}
+- Pending actions: ${lastMeeting.summary.recommendedActions?.filter(a => a.status === 'pending').map(a => a.title).join(', ') || 'None'}`
+    : 'No previous meeting data available.';
+
+  // Build profile context
+  const profileContext = profile ? `
+**Career Vision:** ${profile.careerVision || 'Not specified'}
+**Strengths:** ${profile.strengths?.join(', ') || 'Not specified'}
+**Work Experience:** ${profile.experiences?.length || 0} experiences logged` : '';
+
+  const formattedDate = meetingDate
+    ? new Date(meetingDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+    : 'Upcoming';
+
+  return `You are a high school counselor preparing a meeting agenda for a student. Generate a clear, readable text agenda that can be edited by the counselor.
+
+${GRADE_LEVEL_GUIDANCE}
+
+---
+
+## Student Context
+
+**Student:** ${student.firstName} ${student.lastName}
+**Grade:** ${student.grade}
+**GPA:** ${student.gpa}
+**On-Track Status:** ${student.onTrackStatus}
+${profileContext}
+
+**Incomplete Milestones:**
+${incompleteMilestones || 'All milestones complete'}
+
+**Active Goals:**
+${activeGoals || 'No active goals'}
+
+**Bookmarked Careers/Programs:**
+${bookmarkedItems || 'No bookmarks'}
+
+**Recent AI Reflections:**
+${recentReflections || 'No recent reflections'}
+
+**Previous Meeting Context:**
+${lastMeetingContext}
+
+---
+
+## Instructions
+
+Generate a meeting agenda as plain text that follows this format exactly:
+
+Meeting with ${student.firstName} ${student.lastName}
+Grade ${student.grade} | ${formattedDate}
+
+PRIORITY ITEMS
+- [Topic title]
+  [1-2 sentence context based on student data]
+
+DISCUSSION TOPICS
+- [Topic title]
+  [1-2 sentence context based on student data]
+
+NOTES
+[Leave blank for counselor notes]
+
+Requirements:
+1. Include 2-3 priority items based on urgent deadlines, incomplete milestones, or key decision points for this grade level
+2. Include 2-3 discussion topics for career exploration, goals, or grade-level milestones
+3. Each item should have specific context from the student's data
+4. Keep descriptions brief but personalized
+5. Output ONLY the agenda text, no additional commentary or markdown formatting`;
+}
+
+/**
+ * Generate a text-based meeting agenda using Gemini API
+ */
+export async function generateTextAgenda(
+  studentData: StudentData,
+  meetingDate?: string
+): Promise<string> {
+  const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+
+  if (!apiKey) {
+    console.warn('Gemini API key not configured, using fallback text agenda');
+    return generateFallbackTextAgenda(studentData, meetingDate);
+  }
+
+  const prompt = buildTextAgendaPrompt(studentData, meetingDate);
+
+  try {
+    const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: prompt
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 1024,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Gemini API error:', response.status, errorText);
+      return generateFallbackTextAgenda(studentData, meetingDate);
+    }
+
+    const data = await response.json();
+    const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!responseText) {
+      console.error('No response text from Gemini');
+      return generateFallbackTextAgenda(studentData, meetingDate);
+    }
+
+    return responseText.trim();
+  } catch (error) {
+    console.error('Failed to call Gemini API:', error);
+    return generateFallbackTextAgenda(studentData, meetingDate);
+  }
+}
+
+/**
+ * Generate a fallback text agenda when AI is unavailable
+ */
+export function generateFallbackTextAgenda(
+  studentData: StudentData,
+  meetingDate?: string
+): string {
+  const { student, milestones, smartGoals, bookmarks, meetings } = studentData;
+  const now = new Date();
+
+  const formattedDate = meetingDate
+    ? new Date(meetingDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+    : 'Upcoming';
+
+  const lines: string[] = [
+    `Meeting with ${student.firstName} ${student.lastName}`,
+    `Grade ${student.grade} | ${formattedDate}`,
+    '',
+    'PRIORITY ITEMS',
+  ];
+
+  // Add urgent milestones
+  const urgentMilestones = milestones
+    .filter(m => m.status === 'not_done' && m.dueDate)
+    .filter(m => {
+      const dueDate = new Date(m.dueDate!);
+      const daysUntil = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      return daysUntil <= 14 && daysUntil > 0;
+    })
+    .slice(0, 2);
+
+  if (urgentMilestones.length > 0) {
+    urgentMilestones.forEach(m => {
+      const dueDate = new Date(m.dueDate!);
+      const daysUntil = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      lines.push(`- ${m.title}`);
+      lines.push(`  Due in ${daysUntil} days. Currently ${m.progress}% complete.`);
+    });
+  }
+
+  // Add active goals if no urgent milestones
+  if (urgentMilestones.length < 2) {
+    const activeGoals = smartGoals
+      .filter(g => g.status === 'active')
+      .slice(0, 2 - urgentMilestones.length);
+
+    activeGoals.forEach(g => {
+      const completedCount = g.subtasks.filter(s => s.completed).length;
+      lines.push(`- ${g.title}`);
+      lines.push(`  ${completedCount}/${g.subtasks.length} subtasks completed.`);
+    });
+  }
+
+  if (lines.length === 4) {
+    lines.push('- Review current progress');
+    lines.push('  Check in on overall academic and career planning progress.');
+  }
+
+  lines.push('');
+  lines.push('DISCUSSION TOPICS');
+
+  // Add grade-level topic
+  const gradeTopic = getGradeTopicForText(student.grade);
+  if (gradeTopic) {
+    lines.push(`- ${gradeTopic.topic}`);
+    lines.push(`  ${gradeTopic.description}`);
+  }
+
+  // Add career exploration if they have bookmarks
+  const topPicks = bookmarks.filter(b => b.isTopPick).slice(0, 2);
+  if (topPicks.length > 0) {
+    lines.push('- Career Exploration');
+    lines.push(`  Discuss interest in ${topPicks.map(b => b.title).join(', ')}.`);
+  }
+
+  // Add follow-up from previous meeting
+  const lastMeeting = meetings
+    .filter(m => m.status === 'completed')
+    .sort((a, b) => new Date(b.scheduledDate).getTime() - new Date(a.scheduledDate).getTime())[0];
+
+  if (lastMeeting?.summary?.recommendedActions?.some(a => a.status === 'pending')) {
+    lines.push('- Follow Up from Previous Meeting');
+    lines.push(`  Review pending action items from ${new Date(lastMeeting.scheduledDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}.`);
+  }
+
+  lines.push('');
+  lines.push('NOTES');
+  lines.push('');
+
+  return lines.join('\n');
+}
+
+function getGradeTopicForText(grade: number): { topic: string; description: string } | null {
+  switch (grade) {
+    case 12:
+      return { topic: 'College Application Status', description: 'Review submitted applications and financial aid progress.' };
+    case 11:
+      return { topic: 'College Planning', description: 'Discuss college list development and testing plans.' };
+    case 10:
+      return { topic: 'Career Exploration', description: 'Review career interests and extracurricular involvement.' };
+    case 9:
+      return { topic: 'High School Transition', description: 'Check in on adjustment and course planning.' };
+    default:
+      return null;
+  }
+}
+
+/**
  * Export the grade level guidance for use in other components
  */
 export { GRADE_LEVEL_GUIDANCE };

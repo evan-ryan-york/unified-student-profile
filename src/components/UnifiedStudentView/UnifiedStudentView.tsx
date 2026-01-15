@@ -13,8 +13,10 @@ import { StudentWorkTab } from '@/components/StudentWork';
 import { MeetingsTab } from '@/components/Meetings';
 import { LoadingSection } from '@/components/shared';
 import { AlmaChatPanel } from '@/components/AlmaChatPanel';
+import { ScheduleMeetingModal } from '@/components/ScheduleMeetingFlow';
+import type { ScheduledMeetingData } from '@/components/ScheduleMeetingFlow/ScheduleMeetingModal';
 import { useStudentData } from '@/hooks/useStudentData';
-import { useMeetings } from '@/contexts/MeetingsContext';
+import { useMeetings, useMeetingsContext } from '@/contexts/MeetingsContext';
 import type { TabType, Task, SuggestedAction } from '@/types/student';
 
 interface UnifiedStudentViewProps {
@@ -27,8 +29,10 @@ export function UnifiedStudentView({ studentId }: UnifiedStudentViewProps) {
   const [isGeneratingSnapshot, setIsGeneratingSnapshot] = useState(false);
   const [localTasks, setLocalTasks] = useState<Task[]>([]);
   const [localSuggestedActions, setLocalSuggestedActions] = useState<SuggestedAction[]>([]);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
 
   const studentData = useStudentData(studentId);
+  const { addMeeting } = useMeetingsContext();
 
   // Handle tab query parameter
   useEffect(() => {
@@ -89,6 +93,34 @@ export function UnifiedStudentView({ studentId }: UnifiedStudentViewProps) {
     }, 2000);
   };
 
+  const handleOpenScheduleModal = () => {
+    setIsScheduleModalOpen(true);
+  };
+
+  const handleCloseScheduleModal = () => {
+    setIsScheduleModalOpen(false);
+  };
+
+  const handleMeetingScheduled = (data: ScheduledMeetingData) => {
+    // Convert text agenda to a single AgendaItem for storage
+    const agendaItems = data.agenda ? [{
+      id: `agenda-${Date.now()}`,
+      topic: 'Meeting Agenda',
+      description: data.agenda,
+      source: 'counselor_added' as const,
+      covered: false,
+    }] : [];
+
+    addMeeting({
+      studentId,
+      title: data.title,
+      scheduledDate: data.scheduledDate,
+      duration: data.duration,
+      agenda: agendaItems,
+    });
+    setIsScheduleModalOpen(false);
+  };
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'overview':
@@ -123,7 +155,7 @@ export function UnifiedStudentView({ studentId }: UnifiedStudentViewProps) {
             activities={activityHistory}
             meetings={meetings}
             studentId={studentId}
-            studentData={studentData}
+            studentName={studentData.student.firstName}
           />
         );
       default:
@@ -221,6 +253,7 @@ export function UnifiedStudentView({ studentId }: UnifiedStudentViewProps) {
         <StudentHeader
           student={student}
           studentId={studentId}
+          onScheduleMeeting={handleOpenScheduleModal}
         />
 
         {/* Tab Navigation */}
@@ -234,6 +267,15 @@ export function UnifiedStudentView({ studentId }: UnifiedStudentViewProps) {
           {renderTabContent()}
         </Box>
       </Box>
+
+      {/* Schedule Meeting Modal */}
+      <ScheduleMeetingModal
+        open={isScheduleModalOpen}
+        onClose={handleCloseScheduleModal}
+        onSchedule={handleMeetingScheduled}
+        studentId={studentId}
+        studentName={student.firstName}
+      />
     </AppLayout>
   );
 }

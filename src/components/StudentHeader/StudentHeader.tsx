@@ -8,6 +8,7 @@ import type { Student } from '@/types/student';
 interface StudentHeaderProps {
   student: Student;
   studentId: string;
+  onScheduleMeeting?: () => void;
 }
 
 function OnTrackPill({ status }: { status: 'on_track' | 'off_track' }) {
@@ -41,11 +42,15 @@ function OnTrackPill({ status }: { status: 'on_track' | 'off_track' }) {
   );
 }
 
-export function StudentHeader({ student, studentId }: StudentHeaderProps) {
+export function StudentHeader({ student, studentId, onScheduleMeeting }: StudentHeaderProps) {
   const router = useRouter();
 
   const handleScheduleMeeting = () => {
-    router.push(`/students/${studentId}/meetings/schedule`);
+    if (onScheduleMeeting) {
+      onScheduleMeeting();
+    } else {
+      router.push(`/students/${studentId}/meetings/schedule`);
+    }
   };
 
   return (
