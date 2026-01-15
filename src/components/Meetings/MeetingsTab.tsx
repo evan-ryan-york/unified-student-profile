@@ -3,7 +3,6 @@
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Box } from '@mui/material';
-import { ScheduleMeetingSection } from './ScheduleMeetingSection';
 import { UpcomingMeetingsSection } from './UpcomingMeetingsSection';
 import { PastMeetingsSection } from './PastMeetingsSection';
 import { ActivityHistorySection } from './ActivityHistorySection';
@@ -36,9 +35,6 @@ export function MeetingsTab({ activities, meetings, studentId }: MeetingsTabProp
     };
   }, [meetings]);
 
-  // Get next upcoming meeting
-  const nextMeeting = upcomingMeetings[0] || null;
-
   // Get last completed meeting
   const lastMeeting = useMemo(() => {
     if (pastMeetings.length === 0) return null;
@@ -57,20 +53,13 @@ export function MeetingsTab({ activities, meetings, studentId }: MeetingsTabProp
   return (
     <Box>
       <Box sx={{ py: 2.5, display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {/* Meeting Status Overview */}
-        <ScheduleMeetingSection
-          onScheduleMeeting={handleScheduleMeeting}
-          lastMeeting={lastMeeting}
-          upcomingMeeting={nextMeeting}
-        />
-
         {/* Upcoming Meetings */}
-        {upcomingMeetings.length > 0 && (
-          <UpcomingMeetingsSection
-            meetings={upcomingMeetings}
-            onMeetingClick={handleMeetingClick}
-          />
-        )}
+        <UpcomingMeetingsSection
+          meetings={upcomingMeetings}
+          onMeetingClick={handleMeetingClick}
+          lastMeeting={lastMeeting}
+          onScheduleMeeting={handleScheduleMeeting}
+        />
 
         {/* Past Meetings */}
         <PastMeetingsSection

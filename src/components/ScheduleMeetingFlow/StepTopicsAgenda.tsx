@@ -112,12 +112,12 @@ export function StepTopicsAgenda({
       {/* Meeting Title */}
       <Box className="mb-6">
         <Typography className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-2">
-          Meeting Title
+          Meeting Title (Optional)
         </Typography>
         <TextField
           value={meetingTitle}
           onChange={(e) => onTitleChange(e.target.value)}
-          placeholder="Enter meeting title..."
+          placeholder="Leave blank for default title..."
           fullWidth
           size="small"
           sx={{ '& .MuiInputBase-root': { fontSize: '0.875rem' } }}
@@ -262,8 +262,11 @@ export function StepTopicsAgenda({
           {/* Agenda Items */}
           {agenda.length === 0 ? (
             <Box className="p-6 border border-dashed border-neutral-200 rounded-lg text-center">
-              <Typography className="text-sm text-neutral-500">
-                Select topics to build your agenda
+              <Typography className="text-sm text-neutral-500 mb-1">
+                No agenda items yet
+              </Typography>
+              <Typography className="text-xs text-neutral-400">
+                Select topics to build your agenda, or schedule without one
               </Typography>
             </Box>
           ) : (

@@ -30,12 +30,12 @@ const STEPS: Step[] = ['duration', 'topics-agenda'];
 
 const STEP_TITLES: Record<Step, string> = {
   duration: 'Date & Duration',
-  'topics-agenda': 'Topics & Agenda',
+  'topics-agenda': 'Agenda (Optional)',
 };
 
 const STEP_DESCRIPTIONS: Record<Step, string> = {
   duration: 'Choose when and how long the meeting will be',
-  'topics-agenda': 'Select topics and review your meeting agenda',
+  'topics-agenda': 'Add topics and create an agenda for your meeting',
 };
 
 export function ScheduleMeetingPage({ studentId }: ScheduleMeetingPageProps) {
@@ -164,13 +164,31 @@ export function ScheduleMeetingPage({ studentId }: ScheduleMeetingPageProps) {
     // Add meeting to context
     const newMeeting = addMeeting({
       studentId,
-      title: meetingTitle || 'Meeting',
+      title: meetingTitle || `Meeting with ${student.firstName}`,
       scheduledDate: dateTime,
       duration,
       agenda,
     });
 
     console.log('Meeting scheduled:', newMeeting);
+
+    // Navigate back to student profile, switch to meetings tab
+    router.push(`/students/${studentId}?tab=meetings`);
+  };
+
+  const handleScheduleWithoutAgenda = () => {
+    const dateTime = `${scheduledDate}T${scheduledTime}:00`;
+
+    // Add meeting to context without agenda
+    const newMeeting = addMeeting({
+      studentId,
+      title: `Meeting with ${student.firstName}`,
+      scheduledDate: dateTime,
+      duration,
+      agenda: [],
+    });
+
+    console.log('Meeting scheduled without agenda:', newMeeting);
 
     // Navigate back to student profile, switch to meetings tab
     router.push(`/students/${studentId}?tab=meetings`);
@@ -201,9 +219,8 @@ export function ScheduleMeetingPage({ studentId }: ScheduleMeetingPageProps) {
       case 'duration':
         return duration > 0 && !!scheduledDate && !!scheduledTime;
       case 'topics-agenda':
-        return (selectedTopicIds.size > 0 || customTopics.length > 0) &&
-               agenda.length > 0 &&
-               meetingTitle.trim().length > 0;
+        // Agenda is optional - allow scheduling with or without agenda items
+        return true;
       default:
         return false;
     }
@@ -317,7 +334,8 @@ export function ScheduleMeetingPage({ studentId }: ScheduleMeetingPageProps) {
                 onDurationChange={setDuration}
                 onDateChange={setScheduledDate}
                 onTimeChange={setScheduledTime}
-                onNext={handleNext}
+                onSchedule={handleScheduleWithoutAgenda}
+                onAddAgenda={handleNext}
                 onCancel={handleBack}
                 canProceed={canProceed()}
               />

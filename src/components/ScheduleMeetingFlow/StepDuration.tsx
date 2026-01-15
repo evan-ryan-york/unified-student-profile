@@ -1,6 +1,10 @@
 'use client';
 
 import { Box, Typography, Button, TextField, ToggleButton, ToggleButtonGroup } from '@mui/material';
+import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs, { Dayjs } from 'dayjs';
 import { Clock, Calendar } from 'lucide-react';
 import { Slate } from '@/theme/primitives';
 
@@ -11,7 +15,8 @@ interface StepDurationProps {
   onDurationChange: (duration: number) => void;
   onDateChange: (date: string) => void;
   onTimeChange: (time: string) => void;
-  onNext: () => void;
+  onSchedule: () => void;
+  onAddAgenda: () => void;
   onCancel: () => void;
   canProceed: boolean;
 }
@@ -25,14 +30,22 @@ export function StepDuration({
   onDurationChange,
   onDateChange,
   onTimeChange,
-  onNext,
+  onSchedule,
+  onAddAgenda,
   onCancel,
   canProceed,
 }: StepDurationProps) {
   // Get tomorrow's date as default minimum
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const minDate = tomorrow.toISOString().split('T')[0];
+  const tomorrow = dayjs().add(1, 'day');
+
+  // Convert string date to dayjs for the calendar
+  const selectedDate = scheduledDate ? dayjs(scheduledDate) : null;
+
+  const handleDateChange = (date: Dayjs | null) => {
+    if (date) {
+      onDateChange(date.format('YYYY-MM-DD'));
+    }
+  };
 
   return (
     <Box className="p-4 flex flex-col h-full">
@@ -42,7 +55,7 @@ export function StepDuration({
           <Box className="flex items-center gap-2 mb-3">
             <Clock size={16} className="text-neutral-500" />
             <Typography className="text-sm font-medium text-neutral-700">
-              How long will this meeting be?
+              Meeting duration
             </Typography>
           </Box>
 
@@ -80,81 +93,71 @@ export function StepDuration({
           <Box className="flex items-center gap-2 mb-3">
             <Calendar size={16} className="text-neutral-500" />
             <Typography className="text-sm font-medium text-neutral-700">
-              When should we schedule it?
+              Date
             </Typography>
           </Box>
 
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField
-              type="date"
-              label="Date"
-              value={scheduledDate}
-              onChange={(e) => onDateChange(e.target.value)}
-              inputProps={{ min: minDate }}
-              fullWidth
-              size="small"
-              InputLabelProps={{ shrink: true }}
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <DateCalendar
+              value={selectedDate}
+              onChange={handleDateChange}
+              minDate={tomorrow}
+              sx={{
+                width: '100%',
+                '& .MuiPickersCalendarHeader-root': {
+                  paddingLeft: 1,
+                  paddingRight: 1,
+                },
+                '& .MuiDayCalendar-weekContainer': {
+                  justifyContent: 'space-around',
+                },
+                '& .MuiPickersDay-root': {
+                  fontSize: '0.875rem',
+                },
+              }}
             />
+          </LocalizationProvider>
 
-            <TextField
-              type="time"
-              label="Time"
-              value={scheduledTime}
-              onChange={(e) => onTimeChange(e.target.value)}
-              fullWidth
-              size="small"
-              InputLabelProps={{ shrink: true }}
-            />
-          </Box>
+          <TextField
+            type="time"
+            label="Time"
+            value={scheduledTime}
+            onChange={(e) => onTimeChange(e.target.value)}
+            fullWidth
+            size="small"
+            InputLabelProps={{ shrink: true }}
+            sx={{ mt: 2 }}
+          />
         </Box>
 
-        {/* Quick date options */}
-        <Box>
-          <Typography className="text-xs text-neutral-500 mb-2">Quick select:</Typography>
-          <Box className="flex gap-2 flex-wrap">
-            {['Tomorrow', 'Next Week', 'In 2 Weeks'].map((label, index) => {
-              const date = new Date();
-              if (index === 0) date.setDate(date.getDate() + 1);
-              else if (index === 1) date.setDate(date.getDate() + 7);
-              else date.setDate(date.getDate() + 14);
-              const dateStr = date.toISOString().split('T')[0];
-
-              return (
-                <Button
-                  key={label}
-                  variant="outlined"
-                  size="small"
-                  onClick={() => onDateChange(dateStr)}
-                  sx={{
-                    textTransform: 'none',
-                    borderColor: scheduledDate === dateStr ? 'primary.main' : 'neutral.300',
-                    backgroundColor: scheduledDate === dateStr ? 'primary.50' : 'transparent',
-                  }}
-                >
-                  {label}
-                </Button>
-              );
-            })}
-          </Box>
-        </Box>
       </Box>
 
       {/* Actions */}
-      <Box className="flex gap-2 pt-4 border-t border-neutral-100 mt-4">
+      <Box className="flex flex-col gap-3 pt-4 border-t border-neutral-100 mt-4">
+        <Box className="flex gap-2">
+          <Button
+            variant="text"
+            onClick={onCancel}
+            sx={{ textTransform: 'none', flex: 1 }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={onSchedule}
+            disabled={!canProceed}
+            sx={{ textTransform: 'none', flex: 1 }}
+          >
+            Schedule
+          </Button>
+        </Box>
         <Button
           variant="text"
-          onClick={onCancel}
-          sx={{ textTransform: 'none', flex: 1 }}
-        >
-          Cancel
-        </Button>
-        <Button
-          variant="contained"
-          onClick={onNext}
+          onClick={onAddAgenda}
           disabled={!canProceed}
-          sx={{ textTransform: 'none', flex: 1 }}
+          sx={{ textTransform: 'none', color: 'text.secondary', fontSize: '0.875rem' }}
         >
-          Next
+          Add an agenda instead
         </Button>
       </Box>
     </Box>

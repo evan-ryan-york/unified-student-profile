@@ -29,8 +29,8 @@ const STEPS: Step[] = ['duration', 'topics', 'agenda', 'confirm'];
 
 const STEP_TITLES: Record<Step, string> = {
   duration: 'Schedule Meeting',
-  topics: 'Select Topics',
-  agenda: 'Review Agenda',
+  topics: 'Select Topics (Optional)',
+  agenda: 'Review Agenda (Optional)',
   confirm: 'Confirm',
 };
 
@@ -93,10 +93,20 @@ export function ScheduleMeetingPanel({ studentData, onClose, onSchedule }: Sched
   const handleSchedule = () => {
     const dateTime = `${scheduledDate}T${scheduledTime}:00Z`;
     onSchedule({
-      title: meetingTitle || 'Meeting',
+      title: meetingTitle || `Meeting with ${studentData.student.firstName}`,
       scheduledDate: dateTime,
       duration,
       agenda,
+    });
+  };
+
+  const handleScheduleWithoutAgenda = () => {
+    const dateTime = `${scheduledDate}T${scheduledTime}:00Z`;
+    onSchedule({
+      title: `Meeting with ${studentData.student.firstName}`,
+      scheduledDate: dateTime,
+      duration,
+      agenda: [],
     });
   };
 
@@ -125,9 +135,11 @@ export function ScheduleMeetingPanel({ studentData, onClose, onSchedule }: Sched
       case 'duration':
         return duration > 0 && !!scheduledDate && !!scheduledTime;
       case 'topics':
-        return selectedTopicIds.size > 0 || customTopics.length > 0;
+        // Topics are optional - allow proceeding without selections
+        return true;
       case 'agenda':
-        return agenda.length > 0 && meetingTitle.trim().length > 0;
+        // Agenda is optional - allow proceeding without agenda items or title
+        return true;
       case 'confirm':
         return true;
       default:
@@ -177,7 +189,8 @@ export function ScheduleMeetingPanel({ studentData, onClose, onSchedule }: Sched
             onDurationChange={setDuration}
             onDateChange={setScheduledDate}
             onTimeChange={setScheduledTime}
-            onNext={handleNext}
+            onSchedule={handleScheduleWithoutAgenda}
+            onAddAgenda={handleNext}
             onCancel={onClose}
             canProceed={canProceed()}
           />
