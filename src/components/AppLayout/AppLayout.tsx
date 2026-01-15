@@ -26,7 +26,7 @@ export function AppLayout({ children, rightPanel, currentStudentId }: AppLayoutP
       <Box
         sx={{
           marginLeft: '220px', // Sidebar width
-          marginRight: rightPanel ? '420px' : 0, // Right panel width
+          marginRight: rightPanel ? '350px' : 0, // Right panel width
           flex: 1,
           minWidth: 0, // Allow flex shrinking
           overflow: 'hidden', // Prevent children from pushing out

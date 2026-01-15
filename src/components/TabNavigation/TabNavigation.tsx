@@ -30,6 +30,8 @@ export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
       <Tabs
         value={activeTab}
         onChange={handleChange}
+        variant="scrollable"
+        scrollButtons="auto"
         sx={{
           minHeight: 'auto',
           '& .MuiTabs-indicator': {

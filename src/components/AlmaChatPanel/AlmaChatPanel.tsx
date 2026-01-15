@@ -411,7 +411,7 @@ export function AlmaChatPanel({ studentFirstName, tasks, suggestedActions, onTas
   return (
     <Box
       sx={{
-        width: '420px',
+        width: '350px',
         height: '100vh',
         position: 'fixed',
         right: 0,
